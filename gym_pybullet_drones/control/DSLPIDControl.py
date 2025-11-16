@@ -195,9 +195,8 @@ class DSLPIDControl(BaseControl):
 
         #Write your code here
         # Evaluate desired thrust
-        Kp = np.array([0.5, 0.5, 0.5]) 
-        Kd = 0 #np.array([0.5, 0.5, 0.5]) 
-
+        Kp = np.array([0.65, 0.55, 0.1]) 
+        Kd = np.array([0.7, 0.7, 0.2]) 
         e_r = target_pos - cur_pos # position error
         e_v = target_vel - cur_vel # velocity error 
         Fg = np.array([0, 0, self.GRAVITY])
@@ -219,6 +218,9 @@ class DSLPIDControl(BaseControl):
         R_sci = Rotation.from_matrix(R_des)
         roll, pitch, yaw = R_sci.as_euler('zxy', False)
         target_rpy = np.array([roll, pitch, yaw])
+        # Limit tilt angles 
+        max_tilt = math.pi/3 # arbitrarily chosen
+        target_rpy = np.clip(target_rpy, -max_tilt, max_tilt)
 
         pos_e = e_r
         cur_rotation = np.reshape(p.getMatrixFromQuaternion(cur_quat), (3,3))
@@ -280,8 +282,8 @@ class DSLPIDControl(BaseControl):
         e_w = target_rpy_rates - cur_ang_vel
         # print(f"e_w: {e_w}")
 
-        Kp = np.array([0.5, 0.5, 0.5]) 
-        Kd = 0 #np.diag([0.5, 0.5, 0.5]) 
+        Kp = np.array([500, 500, 100]) 
+        Kd = np.array([800, 800, 500]) 
         target_torques = -Kp*e_R + Kd*e_w
         # print(f"torques: {target_torques}")
 
