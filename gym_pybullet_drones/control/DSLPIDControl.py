@@ -142,7 +142,7 @@ class DSLPIDControl(BaseControl):
         rpm = self._dslPIDAttitudeControl(control_timestep,
                                           thrust,
                                           cur_quat,
-                                          cur_ang_vel
+                                          cur_ang_vel,
                                           computed_target_rpy,
                                           target_rpy_rates
                                           )
@@ -194,11 +194,38 @@ class DSLPIDControl(BaseControl):
         """
 
         #Write your code here
+        # Evaluate desired thrust
+        Kp = np.array([0.5, 0.5, 0.5]) 
+        Kd = 0 #np.array([0.5, 0.5, 0.5]) 
 
-        target_thrust = np.zeros(3)
-        target_rpy = np.zeros(3)
-        pos_e = np.zeros(3)
-        cur_rotation = np.zeros((3,3))
+        e_r = target_pos - cur_pos # position error
+        e_v = target_vel - cur_vel # velocity error 
+        Fg = np.array([0, 0, self.GRAVITY])
+        target_thrust = np.multiply(Kp, e_r) + np.multiply(Kd, e_v) + mass*target_acc + Fg
+        # print(f"er, ev: {e_r, e_v}")
+        # print(f"Fg: {Fg}")
+
+        # Evaluate desired orientation
+        yaw_des = target_rpy[2]
+        x_C_des = np.array([math.cos(yaw_des), math.cos(yaw_des), 0]).transpose() # desired heading direction 
+        z_B_des = target_thrust / np.linalg.norm(target_thrust) # axis aligning with thrust direction 
+        cross = np.cross(z_B_des, x_C_des)
+        y_B_des = cross / np.linalg.norm(cross)
+        x_B_des = np.cross(y_B_des, z_B_des)
+        # print(f"axes: {x_B_des, y_B_des, z_B_des}")
+
+        R_des = np.column_stack((x_B_des, y_B_des, z_B_des))
+        # print(f"R_des: {R_des}")
+        R_sci = Rotation.from_matrix(R_des)
+        roll, pitch, yaw = R_sci.as_euler('zxy', False)
+        target_rpy = np.array([roll, pitch, yaw])
+
+        pos_e = e_r
+        cur_rotation = np.reshape(p.getMatrixFromQuaternion(cur_quat), (3,3))
+        # print(f"thrust: {target_thrust}")
+        # print(f"target rpy: {target_rpy}")
+        # print(f"pos e: {pos_e}")
+        # print(f"cur rot: {cur_rotation}")
 
         #Your code ends here
 
@@ -222,6 +249,8 @@ class DSLPIDControl(BaseControl):
             The target thrust along the drone z-axis.
         cur_quat : ndarray
             (4,1)-shaped array of floats containing the current orientation as a quaternion.
+        cur_ang_vel : ndarray 
+            (3,1)-shaped array of floats containing the current angular velocity.
         target_euler : ndarray
             (3,1)-shaped array of floats containing the computed target Euler angles.
         target_rpy_rates : ndarray
@@ -236,7 +265,25 @@ class DSLPIDControl(BaseControl):
 
         #Write your code here
 
-        target_torques = np.zeros(3)
+        # Evaluate orientation
+        R_des = (Rotation.from_euler('zxy', target_euler, degrees=False)).as_matrix()
+        R_cur = np.reshape(p.getMatrixFromQuaternion(cur_quat), (3,3))
+        # print(f"R des: {R_des}")
+        # print(f"R cur: {R_cur}")
+
+        # Orientation error
+        temp = np.dot(R_des.T, R_cur) - np.dot(R_cur.T, R_des)
+        e_R = 0.5*self.vee(temp)
+        # print(f"e_R: {e_R}")
+
+        # angular velocity error 
+        e_w = target_rpy_rates - cur_ang_vel
+        # print(f"e_w: {e_w}")
+
+        Kp = np.array([0.5, 0.5, 0.5]) 
+        Kd = 0 #np.diag([0.5, 0.5, 0.5]) 
+        target_torques = -Kp*e_R + Kd*e_w
+        # print(f"torques: {target_torques}")
 
         #Your code ends here
 
@@ -275,3 +322,21 @@ class DSLPIDControl(BaseControl):
         else:
             print("[ERROR] in DSLPIDControl._one23DInterface()")
             exit()
+
+    def vee(self, matrix):
+        """utility function that evaluates the vee operator on a skew symmetric matrix.
+        
+        Parameters 
+        ----------
+        matrix : ndarray 
+            (3,3)-shaped skew symmetric matrix 
+
+        Returns
+        -------
+        ndarray 
+            (3,1)-shaped array of floats 
+        """
+        u1 = matrix[2, 1]
+        u2 = matrix[0, 2]
+        u3 = matrix[1, 0]
+        return np.array([u1, u2, u3]).transpose()
