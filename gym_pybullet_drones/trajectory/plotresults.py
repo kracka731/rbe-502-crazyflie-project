@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from circle import circle
-from diamond import diamond
+# from diamond import diamond
 
 
 def main():
-    state = circle(0, 15)
-    n_samples = int(5/0.25)
-    graph(state, 0, 5, n_samples, "Circle")
+    state = circle(0, 10)
+    n_samples = int(10/0.25)
+    graph(state, 0, 10, n_samples, "Circle")
 
 
 def graph(state, t0, tf, n_samples, shape: str):

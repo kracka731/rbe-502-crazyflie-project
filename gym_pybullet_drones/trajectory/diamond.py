@@ -69,7 +69,8 @@ def find_diamond_vertices() -> np.ndarray:
     vertices = np.hstack(p0, p1, p2, p3, p4)
     return vertices
 
-def eval_coeff_matrix(t):
+
+def M(t):
     """
     Based on a time t, evaluate part of the coefficient matrix, up to a 2nd derivative
     

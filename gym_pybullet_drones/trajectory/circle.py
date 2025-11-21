@@ -1,5 +1,5 @@
 import numpy as np
-from diamond import eval_coeff_matrix
+from diamond import M
 
 
 def circle(t, tf=8):
@@ -26,24 +26,54 @@ def circle(t, tf=8):
     """
     Write your code here.
     """
-    n_samples = int(5/0.25)
-    M_t0 = eval_coeff_matrix(0)
-    M_tf = eval_coeff_matrix(5)
-    A = np.vstack((M_t0, M_tf))
-    bMat = phase_1_bMat()  # 6x3 matrix
-    coefficients = np.linalg.inv(A) @ bMat  # 6x3
+    time_per_phase = 5
+    n_samples = int(time_per_phase/0.25)
 
-    array = np.linspace(0, 5, n_samples)
+    M_t0 = M(0)
+    M_t1 = M(time_per_phase)
+    A = np.vstack((M_t0, M_t1))
+
+    # Phase 1 ----------------------------------------------
+    bMat = phase_1_bMat()  # 6x3 matrix
+    a = np.linalg.inv(A) @ bMat  # 6x3
+
+    time_arr = np.linspace(0, time_per_phase, n_samples)
     p1_P_t = np.empty((1, 3, 3))
-    for t in array:
-        M_t = eval_coeff_matrix(t)
-        P_t = M_t @ coefficients
+    for t in time_arr:
+        M_t = M(t)
+        P_t = M_t @ a  # 3x3 matrix
+        # store as slices in 3D matrix
         p1_P_t = np.concatenate((p1_P_t, P_t.reshape(1, 3, 3)), axis=0)
 
     pos = p1_P_t[1:, 0, :]
     vel = p1_P_t[1:, 1, :]
     acc = p1_P_t[1:, 2, :]
 
+    # Phase 2 -----------------------------------------------
+    R = 1  # m
+    omega = 2*np.pi/time_per_phase
+    z_d = 1  # m
+    bMat = phase_2_bMat()  # 6x3 matrix
+    M_t2 = M(time_per_phase*2)
+    A = np.vstack((M_t1, M_t2))
+    a = np.linalg.inv(A) @ bMat  # 6x3
+
+    time_arr = np.linspace(time_per_phase, time_per_phase*2, n_samples)
+    p2_P_t = np.empty((1, 3, 3))
+    r_circle = np.empty((3, 1))
+    for t in time_arr:
+        circle_pt = np.array([[R*np.cos(omega*t)], [R*np.sin(omega*t)], [z_d]])
+        r_circle = np.hstack((r_circle, circle_pt))
+    print(f"r circle shape: {np.shape(r_circle)}")
+    for col_num in range(np.shape(r_circle)[1]-1):
+        M_t = M(time_arr[col_num])
+        P_t = M_t @ a
+        p2_P_t = np.concatenate((p2_P_t, P_t.reshape(1, 3, 3)), axis=0)
+    print(f"shape of vel: {np.shape(vel)}, shape of p2_P_t: {np.shape(p2_P_t)}, slice shape: {np.shape(p2_P_t[1:, 1, :])}")
+    pos = np.concatenate((pos, r_circle[:, 1:].T    ))
+    vel = np.concatenate((vel, p2_P_t[1:, 1, :]))
+    acc = np.concatenate((acc, p2_P_t[1:, 2, :]))
+    print(f"new vel shape: {np.shape(vel)}")
     desired_state = {
         'pos': pos,
         'vel': vel,
@@ -88,14 +118,12 @@ def phase_2_bMat() -> np.ndarray:
             (3,4)-shaped array of floats representing the four vertices
             of a diamond in 3D space.
     """
-    r0 = np.array([0, 0, 0.5])
+    # position in the world frame
     r1 = np.array([1, 0, 1])
 
-    R = 1  # m
-    omega = 2
-    z_d = 1  # m
-    r_circle = np.array([R*np.cos(omega*t), R*np.sin(omega*t), z_d])
+    # trajectory halts at the start/end of its trajectory
+    v0 = vf = a0 = af = np.array([0, 0, 0])
 
-    b = np.vstack([r0, v0, a0, r1, vf, af])
+    b = np.vstack([r1, v0, a0, r1, vf, af])
     return b
 
