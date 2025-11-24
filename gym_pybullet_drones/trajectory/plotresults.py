@@ -5,11 +5,13 @@ from diamond import diamond
 
 
 def main():
+    # Circle Trajectory
     t = 15
     state = circle(0, t)
     n_samples = int(t/0.1)
     graph(state, 0, t, n_samples, "Circle")
 
+    # Diamond Trajectory
     t = 8
     state = diamond(0, t)
     n_samples = int(t/0.1)
@@ -33,9 +35,7 @@ def graph(state, t0, tf, n_samples, shape: str):
     ax.set_zlabel('Z Position')
     ax.set_title(f"{shape} Trajectory in XYZ Space")
 
-    # bx = fig.add_subplot()
     f, (pp, pv, pa) = plt.subplots(3, 1)
-    # f, px = plt.subplots()
 
     # x(t), y(t), z(t) graphs
     pp.plot(time, pos[:, 0], label='X Position')
