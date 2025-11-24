@@ -5,7 +5,7 @@ from diamond import diamond
 
 
 def main():
-    t = 10
+    t = 15
     state = circle(0, t)
     n_samples = int(t/0.1)
     graph(state, 0, t, n_samples, "Circle")

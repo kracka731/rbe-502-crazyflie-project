@@ -104,6 +104,24 @@ def circle(t, tf=8):
     vel = np.concatenate((vel, p2_P_t[1:, 1, :]))
     acc = np.concatenate((acc, p2_P_t[1:, 2, :]))
 
+    # Phase 3 ----------------------------------------------
+    M_t2 = M(time_per_phase*2)
+    M_t3 = M(time_per_phase*3)
+    A = np.vstack((M_t2, M_t3))
+    b = phase_3_bMat()  # 6x3 matrix
+    a = np.linalg.inv(A) @ b  # 6x1
+
+    p3_P_t = np.empty((1, 3, 3))
+    for t in time_arr:
+        M_t = M(t+(2*time_per_phase))
+        P_t = M_t @ a  # 3x3 matrix
+        # store as slices in 3D matrix
+        p3_P_t = np.concatenate((p3_P_t, P_t.reshape(1, 3, 3)), axis=0)
+
+    pos = np.concatenate((pos, p3_P_t[1:, 0, :]))
+    vel = np.concatenate((vel, p3_P_t[1:, 1, :]))
+    acc = np.concatenate((acc, p3_P_t[1:, 2, :]))
+
     desired_state = {
         'pos': pos,
         'vel': vel,
