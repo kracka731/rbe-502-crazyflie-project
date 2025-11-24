@@ -1,8 +1,10 @@
 import numpy as np
 
+
 def diamond(t, tfinal=8):
     """
-    Generate the desired state of a drone following a diamond-shaped trajectory.
+    Generate the desired state of a drone following a diamond-shaped
+    trajectory.
 
     The function computes the drone’s position, velocity, and acceleration at
     any given time 't' while following a diamond-shaped trajectory.
@@ -13,28 +15,46 @@ def diamond(t, tfinal=8):
 
     Returns:
         desired_state (dict):
-            - 'pos'   (np.ndarray, shape (3,)): Desired position [x, y, z].
-            - 'vel'   (np.ndarray, shape (3,)): Desired velocity [vx, vy, vz].
-            - 'acc'   (np.ndarray, shape (3,)): Desired acceleration [ax, ay, az].
-            - 'jerk'  (np.ndarray, shape (3,)): Desired jerk (set to zero).
-            - 'yaw'   (float): Desired yaw angle (set to zero).
+            - 'pos'  (np.ndarray, shape (3,)): Desired position [x, y, z].
+            - 'vel'  (np.ndarray, shape (3,)): Desired velocity [vx, vy, vz].
+            - 'acc'  (np.ndarray, shape (3,)): Desired acceleration [ax,ay,az].
+            - 'jerk' (np.ndarray, shape (3,)): Desired jerk (set to zero).
+            - 'yaw'  (float): Desired yaw angle (set to zero).
             - 'yawdot' (float): Desired yaw rate (set to zero).
     """
     """
     Write your code here.
     """
     vertices = find_diamond_vertices()
+    v0 = vf = a0 = af = np.array([0, 0, 0])
 
-    bMat = np.array([p0, v0, a0, pf, vf, af]) # 6x3 matrix
-    coefficients = np.multiply(np.linalg.inv(A), bMat)
-
-    t_step = tfinal/4
+    t_per_side = tfinal/4
+    n_samples = int(t_per_side/0.1)
+    time_arr = np.linspace(0, t_per_side, n_samples)
+    p1_P_t = np.empty((1, 3, 3))
     # Split each side of the diamond evenly per its 4 sides
-    for i in range(t, t+tfinal, t_step):
-        # Form constraint matrix 
-        M_t0 = eval_coeff_matrix(t)
-        M_tf = eval_coeff_matrix(t+tfinal)
+    for side in range(4):
+        t0 = t_per_side*side
+        # Form constraint matrix
+        M_t0 = M(t0)
+        M_tf = M(t_per_side*(side+1))
         A = np.vstack((M_t0, M_tf))
+
+        p0 = vertices[side, :]
+        pf = vertices[side+1, :]
+        b = np.array([p0, v0, a0, pf, vf, af])  # 6x3 matrix
+        a = np.linalg.inv(A) @ b  # 6x1 coefficient matrix
+
+        for tm in time_arr:
+            M_t = M(tm+t0)
+            P_t = M_t @ a  # 3x3 matrix
+            # store as slices in 3D matrix
+            p1_P_t = np.concatenate((p1_P_t, P_t.reshape(1, 3, 3)), axis=0)
+
+    pos = p1_P_t[1:, 0, :]
+    vel = p1_P_t[1:, 1, :]
+    acc = p1_P_t[1:, 2, :]
+    print(f"p1_P_T: {np.shape(pos)}")
 
     desired_state = {
         'pos': pos,
@@ -47,15 +67,16 @@ def diamond(t, tfinal=8):
 
     return desired_state
 
-### Helper Functions
+# Helper Functions
+
 
 def find_diamond_vertices() -> np.ndarray:
     """
     Finds the four vertices of a diamond.
-    
     Returns:
         M (ndarray):
-            (3,4)-shaped array of floats representing the four vertices of a diamond in 3D space.
+            (5,3)-shaped array of floats representing the four vertices of
+            a diamond in 3D space.
     """
     u = 1/np.sqrt(2)  # unit length, length of one diamond side
     ux = 1
@@ -66,22 +87,23 @@ def find_diamond_vertices() -> np.ndarray:
     p3 = np.array([ux, -u, u])
     p4 = p0
 
-    vertices = np.hstack(p0, p1, p2, p3, p4)
+    vertices = np.vstack((p0, p1, p2, p3, p4))
     return vertices
 
 
 def M(t):
     """
-    Based on a time t, evaluate part of the coefficient matrix, up to a 2nd derivative
-    
+    Based on a time t, evaluate part of the coefficient matrix, up to
+    a 2nd derivative
+
     Parameters:
         t(float): time (in seconds)
-        
+
     Returns:
         M (ndarray):
             A 3x6 array
     """
-    M = [[1,      t,     pow(t, 2),      pow(t, 3),          pow(t, 4),          pow(t, 5)],           # Row vector = coefficients of q0
-         [0,     1,      2*t,           3*pow(t, 2),        4*pow(t, 3),        5*pow(t, 4)],         # Row vector = coefficients of v0
-         [0,     0,      2,             6*t,               2*pow(t, 2),        20*pow(t, 3)]]        # Row vector = coefficients of a0
+    M = [[1, t, t**2, t**3,     t**4,      t**5,],
+         [0, 1, 2*t,  3*(t**2), 4*(t**3),  5*(t**4)],
+         [0, 0, 2,    6*t,     12*(t**2), 20*(t**3)]]
     return np.asarray(M)

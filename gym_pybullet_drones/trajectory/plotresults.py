@@ -1,13 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from circle import circle
-# from diamond import diamond
+from diamond import diamond
 
 
 def main():
     state = circle(0, 10)
     n_samples = int(10/0.25)
     graph(state, 0, 10, n_samples, "Circle")
+
+    state = diamond(0, 8)
+    n_samples = int(8/0.1)
+    graph(state, 0, 8, n_samples, "Diamond")
+    plt.show()
 
 
 def graph(state, t0, tf, n_samples, shape: str):
@@ -57,7 +62,7 @@ def graph(state, t0, tf, n_samples, shape: str):
     pa.legend()
     pa.set_title(f"Acceleration for {shape} Trajectory over Time")
 
-    plt.show()
+    
 
 
 if __name__ == "__main__":

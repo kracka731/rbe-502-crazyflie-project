@@ -35,7 +35,7 @@ def circle(t, tf=8):
 
     # Phase 1 ----------------------------------------------
     bMat = phase_1_bMat()  # 6x3 matrix
-    a = np.linalg.inv(A) @ bMat  # 6x3
+    a = np.linalg.inv(A) @ bMat  # 6x1
 
     time_arr = np.linspace(0, time_per_phase, n_samples)
     p1_P_t = np.empty((1, 3, 3))
@@ -51,29 +51,80 @@ def circle(t, tf=8):
 
     # Phase 2 -----------------------------------------------
     R = 1  # m
-    omega = 2*np.pi/time_per_phase
+    # omega = 2*np.pi/time_per_phase
     z_d = 1  # m
-    bMat = phase_2_bMat()  # 6x3 matrix
-    M_t2 = M(time_per_phase*2)
-    A = np.vstack((M_t1, M_t2))
-    a = np.linalg.inv(A) @ bMat  # 6x3
+    # bMat = phase_2_bMat()  # 6x3 matrix
+    # M_t2 = M(time_per_phase*2)
+    # A = np.vstack((M_t1, M_t2))
+    # a = np.linalg.inv(A) @ bMat  # 6x3
 
-    time_arr = np.linspace(time_per_phase, time_per_phase*2, n_samples)
-    p2_P_t = np.empty((1, 3, 3))
-    r_circle = np.empty((3, 1))
+    # time_arr = np.linspace(time_per_phase, time_per_phase*2, n_samples)
+    # p2_P_t = np.empty((1, 3, 3))
+    # r_circle = np.empty((3, 1))
+    # for t in time_arr:
+    #     circle_pt = np.array([[R*np.cos(omega*t)], [R*np.sin(omega*t)], [z_d]])
+    #     r_circle = np.hstack((r_circle, circle_pt))
+    # print(f"r circle shape: {np.shape(r_circle)}")
+    # for col_num in range(np.shape(r_circle)[1]-1):
+    #     M_t = M(time_arr[col_num])
+    #     P_t = M_t @ a
+    #     p2_P_t = np.concatenate((p2_P_t, P_t.reshape(1, 3, 3)), axis=0)
+    # print(f"shape of vel: {np.shape(vel)}, shape of p2_P_t: {np.shape(p2_P_t)}, slice shape: {np.shape(p2_P_t[1:, 1, :])}")
+    # pos = np.concatenate((pos, r_circle[:, 1:].T))
+    # vel = np.concatenate((vel, p2_P_t[1:, 1, :]))
+    # acc = np.concatenate((acc, p2_P_t[1:, 2, :]))
+    # print(f"new vel shape: {np.shape(vel)}")
+
+    th0 = w0 = wd0 = wf = wdf = 0
+    thf = np.pi
+    b = np.vstack((th0, w0, wd0, 0, thf, wf, wdf, 0))  # 8x1
+    Ma_t1 = M_a(time_per_phase)
+    Ma_t2 = M_a(time_per_phase*2)
+    A = np.vstack((Ma_t1, Ma_t2))  # 8x8
+    a = np.linalg.pinv(A) @ b  # 8x8 * 8x1 = 8x1 
+    # print(f"shape of A: {np.shape(A)}, shape of b: {np.shape(b)}, a shape: {np.shape(a)}")
+
+    angular_P_t = np.empty((4, 1))
     for t in time_arr:
-        circle_pt = np.array([[R*np.cos(omega*t)], [R*np.sin(omega*t)], [z_d]])
-        r_circle = np.hstack((r_circle, circle_pt))
-    print(f"r circle shape: {np.shape(r_circle)}")
-    for col_num in range(np.shape(r_circle)[1]-1):
-        M_t = M(time_arr[col_num])
-        P_t = M_t @ a
+        M_t = M_a(t)  # 4x8
+        P_t = M_t @ a  # 4x1
+        angular_P_t = np.hstack((angular_P_t, P_t))
+
+    p2_P_t = np.empty((1, 3, 3))
+    for i in range(len(time_arr)):
+        # Extract angular motion info
+        t = time_arr[i]
+        w = angular_P_t[1, i]  # access ang vel
+        w_dot = angular_P_t[2, i]
+        w_ddot = angular_P_t[3, i]
+
+        # utils
+        w_t = w*t
+        wd_t = w_dot*t
+        wdd_t = w_ddot*t
+        wd_t_w = wd_t + w
+        temp = wdd_t + 2*w_dot
+
+        # xyz pos
+        r = np.array([[R*np.cos(w_t)], [R*np.sin(w_t)], [z_d]])
+
+        # xyz vel
+        v_x = -R * (wd_t_w) * np.sin(w_t)
+        v_y =  R * (wd_t_w) * np.cos(w_t)
+        v_z = 0
+
+        # xyz acc
+        a_x = -R * temp * np.sin(w_t) - R * wd_t_w**2 * np.cos(w_t)
+        a_y =  R * temp * np.cos(w_t) - R * wd_t_w**2 * np.sin(w_t)
+        a_z = 0
+
+        P_t = np.vstack((r.T, [v_x, v_y, v_z], [a_x, a_y, a_z]))
         p2_P_t = np.concatenate((p2_P_t, P_t.reshape(1, 3, 3)), axis=0)
-    print(f"shape of vel: {np.shape(vel)}, shape of p2_P_t: {np.shape(p2_P_t)}, slice shape: {np.shape(p2_P_t[1:, 1, :])}")
-    pos = np.concatenate((pos, r_circle[:, 1:].T    ))
+
+    pos = np.concatenate((pos, p2_P_t[1:, 0, :]))
     vel = np.concatenate((vel, p2_P_t[1:, 1, :]))
     acc = np.concatenate((acc, p2_P_t[1:, 2, :]))
-    print(f"new vel shape: {np.shape(vel)}")
+
     desired_state = {
         'pos': pos,
         'vel': vel,
@@ -127,3 +178,11 @@ def phase_2_bMat() -> np.ndarray:
     b = np.vstack([r1, v0, a0, r1, vf, af])
     return b
 
+
+def M_a(t):
+    """M, but also accounts for jerk"""
+    M = [[1, t, t**2, t**3,     t**4,      t**5,       t**6,       t**7],
+         [0, 1, 2*t,  3*(t**2), 4*(t**3),  5*(t**4),   6*(t**5),   7*(t**6)],
+         [0, 0, 2,    6*t,     12*(t**2), 20*(t**3),  30*(t**4),  42*(t**5)],
+         [0, 0, 0,    6,       24*t,      60*(t**2), 120*(t**3), 210*(t**4)]]
+    return np.asarray(M)
