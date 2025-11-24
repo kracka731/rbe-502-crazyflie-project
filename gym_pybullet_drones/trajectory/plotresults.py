@@ -5,13 +5,15 @@ from diamond import diamond
 
 
 def main():
-    state = circle(0, 10)
-    n_samples = int(10/0.25)
-    graph(state, 0, 10, n_samples, "Circle")
+    t = 10
+    state = circle(0, t)
+    n_samples = int(t/0.1)
+    graph(state, 0, t, n_samples, "Circle")
 
-    state = diamond(0, 8)
-    n_samples = int(8/0.1)
-    graph(state, 0, 8, n_samples, "Diamond")
+    t = 8
+    state = diamond(0, t)
+    n_samples = int(t/0.1)
+    graph(state, 0, t, n_samples, "Diamond")
     plt.show()
 
 
@@ -61,8 +63,6 @@ def graph(state, t0, tf, n_samples, shape: str):
     pa.set_ylabel('Acceleration (m/s^2)')
     pa.legend()
     pa.set_title(f"Acceleration for {shape} Trajectory over Time")
-
-    
 
 
 if __name__ == "__main__":

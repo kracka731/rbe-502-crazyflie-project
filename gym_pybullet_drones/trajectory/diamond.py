@@ -31,7 +31,7 @@ def diamond(t, tfinal=8):
     t_per_side = tfinal/4
     n_samples = int(t_per_side/0.1)
     time_arr = np.linspace(0, t_per_side, n_samples)
-    p1_P_t = np.empty((1, 3, 3))
+    tot_P_t = np.empty((1, 3, 3))
     # Split each side of the diamond evenly per its 4 sides
     for side in range(4):
         t0 = t_per_side*side
@@ -49,12 +49,11 @@ def diamond(t, tfinal=8):
             M_t = M(tm+t0)
             P_t = M_t @ a  # 3x3 matrix
             # store as slices in 3D matrix
-            p1_P_t = np.concatenate((p1_P_t, P_t.reshape(1, 3, 3)), axis=0)
+            tot_P_t = np.concatenate((tot_P_t, P_t.reshape(1, 3, 3)), axis=0)
 
-    pos = p1_P_t[1:, 0, :]
-    vel = p1_P_t[1:, 1, :]
-    acc = p1_P_t[1:, 2, :]
-    print(f"p1_P_T: {np.shape(pos)}")
+    pos = tot_P_t[1:, 0, :]
+    vel = tot_P_t[1:, 1, :]
+    acc = tot_P_t[1:, 2, :]
 
     desired_state = {
         'pos': pos,

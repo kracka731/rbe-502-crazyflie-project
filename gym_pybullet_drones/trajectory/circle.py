@@ -27,7 +27,7 @@ def circle(t, tf=8):
     Write your code here.
     """
     time_per_phase = 5
-    n_samples = int(time_per_phase/0.25)
+    n_samples = int(time_per_phase/0.1)
 
     M_t0 = M(0)
     M_t1 = M(time_per_phase)
@@ -53,57 +53,36 @@ def circle(t, tf=8):
     R = 1  # m
     # omega = 2*np.pi/time_per_phase
     z_d = 1  # m
-    # bMat = phase_2_bMat()  # 6x3 matrix
-    # M_t2 = M(time_per_phase*2)
-    # A = np.vstack((M_t1, M_t2))
-    # a = np.linalg.inv(A) @ bMat  # 6x3
-
-    # time_arr = np.linspace(time_per_phase, time_per_phase*2, n_samples)
-    # p2_P_t = np.empty((1, 3, 3))
-    # r_circle = np.empty((3, 1))
-    # for t in time_arr:
-    #     circle_pt = np.array([[R*np.cos(omega*t)], [R*np.sin(omega*t)], [z_d]])
-    #     r_circle = np.hstack((r_circle, circle_pt))
-    # print(f"r circle shape: {np.shape(r_circle)}")
-    # for col_num in range(np.shape(r_circle)[1]-1):
-    #     M_t = M(time_arr[col_num])
-    #     P_t = M_t @ a
-    #     p2_P_t = np.concatenate((p2_P_t, P_t.reshape(1, 3, 3)), axis=0)
-    # print(f"shape of vel: {np.shape(vel)}, shape of p2_P_t: {np.shape(p2_P_t)}, slice shape: {np.shape(p2_P_t[1:, 1, :])}")
-    # pos = np.concatenate((pos, r_circle[:, 1:].T))
-    # vel = np.concatenate((vel, p2_P_t[1:, 1, :]))
-    # acc = np.concatenate((acc, p2_P_t[1:, 2, :]))
-    # print(f"new vel shape: {np.shape(vel)}")
 
     th0 = w0 = wd0 = wf = wdf = 0
-    thf = np.pi
-    b = np.vstack((th0, w0, wd0, 0, thf, wf, wdf, 0))  # 8x1
-    Ma_t1 = M_a(time_per_phase)
-    Ma_t2 = M_a(time_per_phase*2)
+    thf = 2*np.pi
+    b = np.vstack((th0, w0, wd0, thf, wf, wdf))  # 8x1
+    Ma_t1 = M(time_per_phase)
+    Ma_t2 = M(time_per_phase*2)
     A = np.vstack((Ma_t1, Ma_t2))  # 8x8
-    a = np.linalg.pinv(A) @ b  # 8x8 * 8x1 = 8x1 
+    a = np.linalg.inv(A) @ b  # 8x8 * 8x1 = 8x1
     # print(f"shape of A: {np.shape(A)}, shape of b: {np.shape(b)}, a shape: {np.shape(a)}")
 
-    angular_P_t = np.empty((4, 1))
+    angular_P_t = np.empty((3, 1))
     for t in time_arr:
-        M_t = M_a(t)  # 4x8
+        M_t = M(t + time_per_phase)  # 4x8
         P_t = M_t @ a  # 4x1
         angular_P_t = np.hstack((angular_P_t, P_t))
 
     p2_P_t = np.empty((1, 3, 3))
     for i in range(len(time_arr)):
         # Extract angular motion info
-        t = time_arr[i]
-        w = angular_P_t[1, i]  # access ang vel
-        w_dot = angular_P_t[2, i]
-        w_ddot = angular_P_t[3, i]
+        t = time_arr[i] + time_per_phase
+        w = angular_P_t[0, i] / t  # access ang vel
+        w_dot = angular_P_t[1, i]
+        w_ddot = angular_P_t[2, i]
 
         # utils
         w_t = w*t
         wd_t = w_dot*t
         wdd_t = w_ddot*t
-        wd_t_w = wd_t + w
-        temp = wdd_t + 2*w_dot
+        wd_t_w = w_dot  # wd_t + w   #
+        temp = w_ddot  # wdd_t + 2*w_dot  #
 
         # xyz pos
         r = np.array([[R*np.cos(w_t)], [R*np.sin(w_t)], [z_d]])
@@ -163,7 +142,7 @@ def phase_1_bMat() -> np.ndarray:
 
 def phase_2_bMat() -> np.ndarray:
     """
-    Finds the four vertices of a diamond.    
+    Finds the four vertices of a diamond. 
     Returns:
         M (ndarray):
             (3,4)-shaped array of floats representing the four vertices
@@ -176,6 +155,27 @@ def phase_2_bMat() -> np.ndarray:
     v0 = vf = a0 = af = np.array([0, 0, 0])
 
     b = np.vstack([r1, v0, a0, r1, vf, af])
+    return b
+
+
+def phase_3_bMat() -> np.ndarray:
+    """
+    Finds the b matrix for Phase 3, when the quadrotor moves to the start 
+    position of the circle.
+    Returns:
+        b (ndarray):
+            (6,3)-shaped array of floats where each row represents starting
+            or ending pos, vel, acc.
+    """
+    # positions in the world frame
+    r0 = np.array([0, 0, 0.5])
+    r1 = np.array([1, 0, 1])
+
+    # trajectory halts at the start/end of its trajectory
+    v0 = vf = a0 = af = np.array([0, 0, 0])
+
+    b = np.vstack([r1, v0, a0, r0, vf, af])
+    # print(f"b: {b}")
     return b
 
 
