@@ -1,5 +1,5 @@
 import numpy as np
-from diamond import M
+from gym_pybullet_drones.trajectory.diamond import M
 
 
 def circle(t, tf=8):
@@ -115,9 +115,9 @@ def circle(t, tf=8):
     acc = np.concatenate((acc, p3_P_t[1:, 2, :]))
 
     desired_state = {
-        'pos': pos,
-        'vel': vel,
-        'acc': acc,
+        'pos': pos.T,
+        'vel': vel.T,
+        'acc': acc.T,
         'jerk': np.array([0, 0, 0]),
         'yaw': 0,
         'yawdot': 0

@@ -56,9 +56,9 @@ def diamond(t, tfinal=8):
     acc = tot_P_t[1:, 2, :]
 
     desired_state = {
-        'pos': pos,
-        'vel': vel,
-        'acc': acc,
+        'pos': pos.T,
+        'vel': vel.T,
+        'acc': acc.T,
         'jerk': np.array([0, 0, 0]),
         'yaw': 0,
         'yawdot': 0
