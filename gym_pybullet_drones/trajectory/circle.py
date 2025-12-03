@@ -88,9 +88,9 @@ def circle(t: float, tf: float = 8):
             print(f"something has gone wrong. this is presumed to be phase {phase_num}")
 
     # Extract data & convert to column vectors
-    pos = np.reshape(P_t[0, :], (3, 1))
-    vel = np.reshape(P_t[1, :], (3, 1))
-    acc = np.reshape(P_t[2, :], (3, 1))
+    pos = np.reshape(P_t[0, :], (3, ))
+    vel = np.reshape(P_t[1, :], (3, ))
+    acc = np.reshape(P_t[2, :], (3, ))
 
     desired_state = {
         'pos': pos,

@@ -111,6 +111,9 @@ def run(
     action = np.zeros((num_drones,4))
     START = time.time()
     elapsed = 0
+
+    traj_error_log = np.zeros((num_drones, int(duration_sec*env.CTRL_FREQ), 9))
+
     for i in range(0, int(duration_sec*env.CTRL_FREQ)):
 
         #### Step the simulation ###################################
@@ -142,6 +145,7 @@ def run(
                        des_state=np.hstack([pos, vel, des_rpy, np.array([0, 0, 0])]),
                        control=np.hstack([pos, INIT_RPYS[j, :], np.zeros(6)])
                        )
+            traj_error_log[j, i] = np.hstack([obs[j][0:3] - pos, obs[j][7:10] - des_rpy, obs[j][10:13] - vel])
 
         #### Printout ##############################################
         env.render()
@@ -160,6 +164,17 @@ def run(
     # logger.save_as_csv("pid") # Optional CSV save
 
     #### Plot the simulation results ###########################
+    squared_error = np.square(traj_error_log)
+    drone_squared_error = squared_error[0]
+    # Examine pose error
+    pose_error = drone_squared_error[:, 0:3]
+    pose_RMSE = np.sqrt(np.mean(pose_error, axis=0))
+    # Find the norm of the error
+    norm_error = np.array([np.linalg.norm(x) for x in pose_error])
+    worst_norm_error = np.sqrt(np.max(norm_error))
+    norm_RMSE = np.sqrt(np.mean(norm_error))
+    
+    print(f"norm_RMSE: {norm_RMSE}, pose_RMSE: {pose_RMSE}, worst_norm_vector: {worst_norm_error}")
     if plot:
         logger.plot()
 

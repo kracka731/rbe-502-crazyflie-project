@@ -50,9 +50,9 @@ def diamond(t, tfinal=8):
     P_t = M_t @ a  # 3x3 matrix
 
     # Extract data & convert to column vectors
-    pos = np.reshape(P_t[0, :], (3, 1))
-    vel = np.reshape(P_t[1, :], (3, 1))
-    acc = np.reshape(P_t[2, :], (3, 1))
+    pos = np.reshape(P_t[0, :], (3, ))
+    vel = np.reshape(P_t[1, :], (3, ))
+    acc = np.reshape(P_t[2, :], (3, ))
 
     desired_state = {
         'pos': pos,

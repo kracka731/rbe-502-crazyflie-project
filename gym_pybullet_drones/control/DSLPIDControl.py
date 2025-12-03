@@ -208,7 +208,7 @@ class DSLPIDControl(BaseControl):
 
         # Evaluate desired orientation
         yaw_des = target_rpy[2]
-        x_C_des = np.array([math.cos(yaw_des), math.cos(yaw_des), 0]).transpose() # desired heading direction 
+        x_C_des = np.array([math.cos(yaw_des), math.cos(yaw_des), 0]) # desired heading direction 
         z_B_des = target_thrust / np.linalg.norm(target_thrust) # axis aligning with thrust direction 
         cross = np.cross(z_B_des, x_C_des)
         y_B_des = cross / np.linalg.norm(cross)

@@ -27,9 +27,9 @@ def generate_whole_trajectory(tf: float, shape:circle):
         pos = state['pos']
         vel = state['vel']
         acc = state['acc']
-        all_pos = np.hstack((all_pos, pos))
-        all_vel = np.hstack((all_vel, vel))
-        all_acc = np.hstack((all_acc, acc))
+        all_pos = np.hstack((all_pos, pos.reshape((3, 1))))
+        all_vel = np.hstack((all_vel, vel.reshape((3, 1))))
+        all_acc = np.hstack((all_acc, acc.reshape((3, 1))))
     state = {
         'pos': all_pos[:, 1:],
         'vel': all_vel[:, 1:],
