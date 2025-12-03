@@ -6,21 +6,38 @@ from diamond import diamond
 
 def main():
     # Circle Trajectory
-    t = 15
-    state = circle(0, t)
-    n_samples = int(t/0.1)
-    graph(state, 0, t, n_samples, "Circle")
+    tf = 15
+    state, time_arr = generate_whole_trajectory(tf, circle)
+    graph(state, time_arr, "Circle")
 
     # Diamond Trajectory
-    t = 8
-    state = diamond(0, t)
-    n_samples = int(t/0.1)
-    graph(state, 0, t, n_samples, "Diamond")
+    tf = 8
+    state, time_arr = generate_whole_trajectory(tf, diamond)
+    graph(state, time_arr, "Diamond")
     plt.show()
 
 
-def graph(state, t0, tf, n_samples, shape: str):
-    time = np.linspace(t0, tf, n_samples)
+def generate_whole_trajectory(tf: float, shape:circle):
+    n_samples = int(tf/0.1)
+    time_arr = np.linspace(0, tf, n_samples)
+
+    all_pos, all_vel, all_acc = np.empty((3, 1)), np.empty((3, 1)), np.empty((3, 1))
+    for t in time_arr:
+        state = shape(t, tf)
+        pos = state['pos']
+        vel = state['vel']
+        acc = state['acc']
+        all_pos = np.hstack((all_pos, pos))
+        all_vel = np.hstack((all_vel, vel))
+        all_acc = np.hstack((all_acc, acc))
+    state = {
+        'pos': all_pos[:, 1:],
+        'vel': all_vel[:, 1:],
+        'acc': all_acc[:, 1:]
+    }
+    return state, time_arr
+
+def graph(state, time: np.ndarray, shape: str):
     pos = state['pos']
     vel = state['vel']
     acc = state['acc']

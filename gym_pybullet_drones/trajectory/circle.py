@@ -2,7 +2,7 @@ import numpy as np
 from gym_pybullet_drones.trajectory.diamond import M
 
 
-def circle(t, tf=8):
+def circle(t: float, tf: float = 8):
     """
     Generate the desired state of a drone following a circular trajectory.
 
@@ -10,7 +10,7 @@ def circle(t, tf=8):
     at a given time 't' while following a circular trajectory.
 
     Parameters:
-        t (float): Current time (in seconds).
+        t (float): Current time step (in seconds).
         tf (float): Total trajectory duration.
 
     Returns:
@@ -26,98 +26,76 @@ def circle(t, tf=8):
     """
     Write your code here.
     """
-    time_per_phase = 5
-    n_samples = int(time_per_phase/0.1)
+    time_per_phase = tf/3.0
+    phase_num = int(np.ceil(t / time_per_phase))
+    if phase_num == 0:
+        phase_num = 1
 
-    M_t0 = M(0)
-    M_t1 = M(time_per_phase)
-    A = np.vstack((M_t0, M_t1))
+    P_t = np.empty((3,3))
+    # Set up coefficient matricies
+    M_t0 = M(time_per_phase*(phase_num-1))
+    M_tf = M(time_per_phase*phase_num)
+    A = np.vstack((M_t0, M_tf))
 
-    # Phase 1 ----------------------------------------------
-    bMat = phase_1_bMat()  # 6x3 matrix
-    a = np.linalg.inv(A) @ bMat  # 6x1
+    match phase_num:
+        case 1:  # Phase 1 ----------------------------------------------
+            bMat = phase_1_bMat()  # 6x3 matrix
+            a = np.linalg.inv(A) @ bMat  # 6x1
 
-    time_arr = np.linspace(0, time_per_phase, n_samples)
-    p1_P_t = np.empty((1, 3, 3))
-    for t in time_arr:
-        M_t = M(t)
-        P_t = M_t @ a  # 3x3 matrix
-        # store as slices in 3D matrix
-        p1_P_t = np.concatenate((p1_P_t, P_t.reshape(1, 3, 3)), axis=0)
+            M_t = M(t)
+            P_t = M_t @ a  # 3x3 matrix
+            
+        case 2: # Phase 2 -----------------------------------------------
+            R = 1  # m
+            z_d = 1  # m
 
-    pos = p1_P_t[1:, 0, :]
-    vel = p1_P_t[1:, 1, :]
-    acc = p1_P_t[1:, 2, :]
+            th0 = w0 = wd0 = wf = wdf = 0
+            thf = 2*np.pi
+            b = np.vstack((th0, w0, wd0, thf, wf, wdf))  # 6x1
+            a = np.linalg.inv(A) @ b  # 6x6 * 6x1 = 6x1
 
-    # Phase 2 -----------------------------------------------
-    R = 1  # m
-    z_d = 1  # m
+            M_t = M(t)  # 3x6
+            angular_P_t = M_t @ a  # 3x1
+            w = angular_P_t[0, 0] / t
+            # print(f"omega: {w}, ang_pt = {angular_P_t}")
+            w_dot = angular_P_t[1, 0]
+            w_ddot = angular_P_t[2, 0]
+            w_t = w*t
 
-    th0 = w0 = wd0 = wf = wdf = 0
-    thf = 2*np.pi
-    b = np.vstack((th0, w0, wd0, thf, wf, wdf))  # 6x1
-    M_t1 = M(time_per_phase)
-    M_t2 = M(time_per_phase*2)
-    A = np.vstack((M_t1, M_t2))  # 6x6
-    a = np.linalg.inv(A) @ b  # 6x6 * 6x1 = 6x1
+            # xyz pos
+            r = np.array([[R*np.cos(w_t)], [R*np.sin(w_t)], [z_d]])
 
-    angular_P_t = np.empty((3, 1))
-    for t in time_arr:
-        M_t = M(t + time_per_phase)  # 3x6
-        P_t = M_t @ a  # 3x1
-        angular_P_t = np.hstack((angular_P_t, P_t))
+            # xyz vel
+            v_x = -R * (w_dot) * np.sin(w_t)
+            v_y = R * (w_dot) * np.cos(w_t)
+            v_z = 0
 
-    p2_P_t = np.empty((1, 3, 3))
-    for i in range(len(time_arr)):
-        # Extract angular motion info
-        t = time_arr[i] + time_per_phase
-        w = angular_P_t[0, i] / t
-        w_dot = angular_P_t[1, i]
-        w_ddot = angular_P_t[2, i]
-        w_t = w*t
+            # xyz acc
+            a_x = -R * w_ddot * np.sin(w_t) - R * w_dot**2 * np.cos(w_t)
+            a_y = R * w_ddot * np.cos(w_t) - R * w_dot**2 * np.sin(w_t)
+            a_z = 0
 
-        # xyz pos
-        r = np.array([[R*np.cos(w_t)], [R*np.sin(w_t)], [z_d]])
+            P_t = np.vstack((r.T, [v_x, v_y, v_z], [a_x, a_y, a_z]))
 
-        # xyz vel
-        v_x = -R * (w_dot) * np.sin(w_t)
-        v_y = R * (w_dot) * np.cos(w_t)
-        v_z = 0
+        case 3:  # Phase 3 ----------------------------------------------
+            b = phase_3_bMat()  # 6x3 matrix
+            a = np.linalg.inv(A) @ b  # 6x1
 
-        # xyz acc
-        a_x = -R * w_ddot * np.sin(w_t) - R * w_dot**2 * np.cos(w_t)
-        a_y = R * w_ddot * np.cos(w_t) - R * w_dot**2 * np.sin(w_t)
-        a_z = 0
+            M_t = M(t)
+            P_t = M_t @ a  # 3x3 matrix
 
-        P_t = np.vstack((r.T, [v_x, v_y, v_z], [a_x, a_y, a_z]))
-        p2_P_t = np.concatenate((p2_P_t, P_t.reshape(1, 3, 3)), axis=0)
+        case _:
+            print(f"something has gone wrong. this is presumed to be phase {phase_num}")
 
-    pos = np.concatenate((pos, p2_P_t[1:, 0, :]))
-    vel = np.concatenate((vel, p2_P_t[1:, 1, :]))
-    acc = np.concatenate((acc, p2_P_t[1:, 2, :]))
-
-    # Phase 3 ----------------------------------------------
-    M_t2 = M(time_per_phase*2)
-    M_t3 = M(time_per_phase*3)
-    A = np.vstack((M_t2, M_t3))
-    b = phase_3_bMat()  # 6x3 matrix
-    a = np.linalg.inv(A) @ b  # 6x1
-
-    p3_P_t = np.empty((1, 3, 3))
-    for t in time_arr:
-        M_t = M(t+(2*time_per_phase))
-        P_t = M_t @ a  # 3x3 matrix
-        # store as slices in 3D matrix
-        p3_P_t = np.concatenate((p3_P_t, P_t.reshape(1, 3, 3)), axis=0)
-
-    pos = np.concatenate((pos, p3_P_t[1:, 0, :]))
-    vel = np.concatenate((vel, p3_P_t[1:, 1, :]))
-    acc = np.concatenate((acc, p3_P_t[1:, 2, :]))
+    # Extract data & convert to column vectors
+    pos = np.reshape(P_t[0, :], (3, 1))
+    vel = np.reshape(P_t[1, :], (3, 1))
+    acc = np.reshape(P_t[2, :], (3, 1))
 
     desired_state = {
-        'pos': pos.T,
-        'vel': vel.T,
-        'acc': acc.T,
+        'pos': pos,
+        'vel': vel,
+        'acc': acc,
         'jerk': np.array([0, 0, 0]),
         'yaw': 0,
         'yawdot': 0

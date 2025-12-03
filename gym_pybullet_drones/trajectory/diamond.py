@@ -28,37 +28,36 @@ def diamond(t, tfinal=8):
     vertices = find_diamond_vertices()
     v0 = vf = a0 = af = np.array([0, 0, 0])
 
-    t_per_side = tfinal/4
-    n_samples = int(t_per_side/0.1)
-    time_arr = np.linspace(0, t_per_side, n_samples)
-    tot_P_t = np.empty((1, 3, 3))
     # Split each side of the diamond evenly per its 4 sides
-    for side in range(4):
-        t0 = t_per_side*side
-        # Form constraint matrix
-        M_t0 = M(t0)
-        M_tf = M(t_per_side*(side+1))
-        A = np.vstack((M_t0, M_tf))
+    t_per_side = tfinal/4
+    side = int(np.floor(t / t_per_side))
+    if side == 4:
+        side = 3
+    
+    t0 = t_per_side*side
+    # Form constraint matrix
+    M_t0 = M(t0)
+    M_tf = M(t_per_side*(side+1))
+    A = np.vstack((M_t0, M_tf))
 
-        p0 = vertices[side, :]
-        pf = vertices[side+1, :]
-        b = np.array([p0, v0, a0, pf, vf, af])  # 6x3 matrix
-        a = np.linalg.inv(A) @ b  # 6x1 coefficient matrix
+    p0 = vertices[side, :]
+    pf = vertices[side+1, :]
+    b = np.array([p0, v0, a0, pf, vf, af])  # 6x3 matrix
+    a = np.linalg.inv(A) @ b  # 6x1 coefficient matrix
 
-        for tm in time_arr:
-            M_t = M(tm+t0)
-            P_t = M_t @ a  # 3x3 matrix
-            # store as slices in 3D matrix
-            tot_P_t = np.concatenate((tot_P_t, P_t.reshape(1, 3, 3)), axis=0)
+    # Evaluate pos, vel, acc
+    M_t = M(t)
+    P_t = M_t @ a  # 3x3 matrix
 
-    pos = tot_P_t[1:, 0, :]
-    vel = tot_P_t[1:, 1, :]
-    acc = tot_P_t[1:, 2, :]
+    # Extract data & convert to column vectors
+    pos = np.reshape(P_t[0, :], (3, 1))
+    vel = np.reshape(P_t[1, :], (3, 1))
+    acc = np.reshape(P_t[2, :], (3, 1))
 
     desired_state = {
-        'pos': pos.T,
-        'vel': vel.T,
-        'acc': acc.T,
+        'pos': pos,
+        'vel': vel,
+        'acc': acc,
         'jerk': np.array([0, 0, 0]),
         'yaw': 0,
         'yawdot': 0
