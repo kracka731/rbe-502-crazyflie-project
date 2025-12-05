@@ -117,7 +117,7 @@ def phase_1_bMat() -> np.ndarray:
             or ending pos, vel, acc.
     """
     # positions in the world frame
-    r0 = np.array([0, 0, 0.5])
+    r0 = np.array([0, 0, 0.1]) # 0.5
     r1 = np.array([1, 0, 1])
 
     # trajectory halts at the start/end of its trajectory

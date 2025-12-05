@@ -195,10 +195,21 @@ class DSLPIDControl(BaseControl):
 
         #Write your code here
         # Evaluate desired thrust
-        # Kp = np.array([0.2, 0.3, 1]) 
-        # Kd = np.array([0.25, 0.3, 0.4]) 
-        Kp = np.array([0.3, 0.3, 1]) 
-        Kd = np.array([0.4, 0.4, 0.4]) 
+        # Good og: Kp = 0.5*np.array([0.3, 0.3, 1]) 
+        # solid for normal speed: 
+        # Kp = 0.5*np.array([0.4, 0.4, 0.8]) 
+        # Kd = np.array([0.2, 0.1, 0.3]) 
+
+        Kp = np.array([0.4, 0.35, 0.6]) 
+        Kd = np.array([0.2, 0.1, 0.3]) 
+
+        # Kp = 0.5*np.array([1.5, 1.5, 1.2]) 
+        # Kd = np.array([0.25, 0.25, 0.3]) 
+
+        # for big speed
+        # Kp = np.array([0.4, 0.4, 0.8]) 
+        # Kd = 0.5*np.array([0.2, 0.1, 0.3]) 
+        # Kd = np.array([0, 0, 0]) 
         e_r = target_pos - cur_pos # position error
         e_v = target_vel - cur_vel # velocity error 
         Fg = np.array([0, 0, self.GRAVITY])
@@ -206,9 +217,18 @@ class DSLPIDControl(BaseControl):
         # print(f"er, ev: {e_r, e_v}")
         # print(f"Fg: {Fg}")
 
+        # scale thrust based on max tilt
+        max_tilt = math.pi/4 # arbitrarily chosen
+        xy_thrust = target_thrust[:2]
+        horiz_max_thrust = target_thrust[2] * np.tan(max_tilt)
+        thrust_ratio = horiz_max_thrust / np.linalg.norm(xy_thrust)
+        if thrust_ratio < 1: # scale down
+            target_thrust[0] *= thrust_ratio    
+            target_thrust[1] *= thrust_ratio    
+
         # Evaluate desired orientation
         yaw_des = target_rpy[2]
-        x_C_des = np.array([math.cos(yaw_des), math.cos(yaw_des), 0]) # desired heading direction 
+        x_C_des = np.array([math.cos(yaw_des), math.sin(yaw_des), 0]) # desired heading direction 
         z_B_des = target_thrust / np.linalg.norm(target_thrust) # axis aligning with thrust direction 
         cross = np.cross(z_B_des, x_C_des)
         y_B_des = cross / np.linalg.norm(cross)
@@ -218,12 +238,9 @@ class DSLPIDControl(BaseControl):
         R_des = np.column_stack((x_B_des, y_B_des, z_B_des))
         # print(f"R_des: {R_des}")
         R_sci = Rotation.from_matrix(R_des)
-        roll, pitch, yaw = R_sci.as_euler('zxy', False)
+        yaw, roll, pitch = R_sci.as_euler('zxy', False)
         target_rpy = np.array([roll, pitch, yaw])
-        # Limit tilt angles 
-        max_tilt = math.pi/4 # arbitrarily chosen
-        target_rpy = np.clip(target_rpy, -max_tilt, max_tilt)
-
+        
         pos_e = e_r
         cur_rotation = np.reshape(p.getMatrixFromQuaternion(cur_quat), (3,3))
         # print(f"thrust: {target_thrust}")
@@ -270,24 +287,60 @@ class DSLPIDControl(BaseControl):
         #Write your code here
 
         # Evaluate orientation
-        R_des = (Rotation.from_euler('zxy', target_euler, degrees=False)).as_matrix()
+        roll, pitch, yaw = target_euler
+        target_euler_zxy = np.array([yaw, roll, pitch])
+        R_des = (Rotation.from_euler('zxy', target_euler_zxy, degrees=False)).as_matrix()
         R_cur = np.reshape(p.getMatrixFromQuaternion(cur_quat), (3,3))
         # print(f"R des: {R_des}")
         # print(f"R cur: {R_cur}")
 
         # Orientation error
         temp = np.dot(R_des.T, R_cur) - np.dot(R_cur.T, R_des)
-        e_R = 0.5*self.vee(temp)
-        print(f"e_R: {e_R}")
+        e_R = self.vee(temp)
+        # print(f"e_R: {e_R}")
 
         # angular velocity error 
         e_w = target_rpy_rates - cur_ang_vel
-        print(f"e_w: {e_w}")
+        # print(f"e_w: {e_w}")
 
-        Kp = np.array([40000, 40000, 8000]) 
-        Kd = np.array([8000, 8000, 4000]) 
+        # OG: 0.340
+        # Kp = np.array([40000, 40000, 8000]) 
+        # Kd = np.array([8000, 8000, 4000]) 
+
+        # RMSE 0.341
+        # Kp = np.array([50000, 50000, 10000])
+        # Kd = np.array([10000, 10000, 5000])
+        
+        # RMSE 0.196
+        # Kp = np.array([40000, 40000, 40000]) 
+        # Kd = np.array([12000, 20000, 8000])
+        
+        # RMSE 0.196
+        # Kp = np.array([35000, 38000, 45000]) 
+        # Kd = np.array([3000, 5000, 3500])
+
+        # RMSE 0.153
+        # Kp = np.array([60000, 60000, 60000]) 
+        # Kd = np.array([3000, 5000, 3500])
+
+        # RMSE 0.1197
+        Kp = np.array([100000, 110000, 100000]) 
+        Kd = np.array([3000,   4000,   3500])
+
+        # RMSE 0.1344 for normal time
+        # Kp = np.array([220000, 400000, 200000]) 
+        # Kd = np.array([12000,  20000,  15000])
+
+        # RMSE 0.1208 for sped up
+        # Kp = np.array([300000, 140000, 120000]) 
+        # Kd = np.array([4000, 4500, 4600])
+
+        # Kp = np.array([100000, 110000, 100000]) 
+        # Kd = np.array([12000,  20000,  20000])
+
+        # Kd = np.array([0, 0, 0]) 
         target_torques = -Kp*e_R + Kd*e_w
-        print(f"torques: {target_torques}")
+        # print(f"torques: {target_torques}")
 
         #Your code ends here
 

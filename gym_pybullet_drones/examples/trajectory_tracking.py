@@ -37,7 +37,7 @@ from gym_pybullet_drones.trajectory import circle, diamond
 DEFAULT_DRONES = DroneModel("cf2x")
 DEFAULT_NUM_DRONES = 1
 DEFAULT_PHYSICS = Physics("pyb")
-DEFAULT_GUI = True
+DEFAULT_GUI = False
 DEFAULT_RECORD_VISION = False
 DEFAULT_PLOT = True
 DEFAULT_USER_DEBUG_GUI = False
@@ -47,6 +47,8 @@ DEFAULT_CONTROL_FREQ_HZ = 48
 DEFAULT_DURATION_SEC = 10
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
+TRAJECTORY_TYPE = "circle" 
+TRAJECTORY_TYPE = "diamond" 
 
 def run(
         drone=DEFAULT_DRONES,
@@ -68,6 +70,7 @@ def run(
     H_STEP = .05
     R = .3
     INIT_XYZS = np.array([[R*np.cos((i/6)*2*np.pi+np.pi/2), R*np.sin((i/6)*2*np.pi+np.pi/2)-R, H+i*H_STEP] for i in range(num_drones)])
+    INIT_XYZS = np.array([[0, 0, 0.1] for i in range(num_drones)])
     INIT_RPYS = np.array([[0, 0,  i * (np.pi/2)/num_drones] for i in range(num_drones)])
 
     #### Initialize a circular trajectory ######################
@@ -119,8 +122,12 @@ def run(
         #### Step the simulation ###################################
         obs, reward, terminated, truncated, info = env.step(action)
 
-        des_st = circle.circle(elapsed)
-        # des_st = diamond.diamond(elapsed)
+        match TRAJECTORY_TYPE:
+            case "diamond":
+                des_st = diamond.diamond(elapsed, duration_sec)
+            case "circle" |_:
+                des_st = circle.circle(elapsed, duration_sec)
+            
         pos = des_st["pos"]
         vel = des_st["vel"]
         acc = des_st["acc"]

@@ -79,7 +79,7 @@ def find_diamond_vertices() -> np.ndarray:
     u = 1/np.sqrt(2)  # unit length, length of one diamond side
     ux = 1
 
-    p0 = np.array([0, 0, 0])
+    p0 = np.array([0, 0, 0.1])
     p1 = np.array([ux, u, u])
     p2 = np.array([ux, 0, 2*u])
     p3 = np.array([ux, -u, u])
